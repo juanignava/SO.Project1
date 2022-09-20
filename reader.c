@@ -6,10 +6,11 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
-//
 
-//Globals
-void *shmem = NULL;
+// CONSTANTS
+
+// number of elements in the array
+int N = 10;
 
 int
 main()
@@ -20,9 +21,6 @@ main()
         perror("project_1");
         exit(1);
     }
-
-    // amount of elements in the array
-    int N = 10;
 
     // memory mapping function instance
     //      address: NULL means the kernel can place the mapping anywhere it sees fit

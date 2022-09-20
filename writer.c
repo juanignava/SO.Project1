@@ -7,17 +7,17 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
+// CONSTANTS
 
-int
-main()
+// number of elements in the array
+int N = 10;
+
+int main()
 {
     // opens the file descriptor that has to be mapped to the
     //     shared memory
     int fd = open("/tmp/project_1", O_RDWR | O_CREAT, 0644);
-    ftruncate(fd,4096);
-
-    // number of elements in the array
-    int N = 10;
+    ftruncate(fd, N*sizeof(int));
 
     // memory mapping function instance
     //      address: NULL means the kernel can place the mapping anywhere it sees fit
