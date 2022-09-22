@@ -1,7 +1,7 @@
 run-writer:
-	gcc -o writer writer.c
+	gcc writer.c -o writer -lpthread
 	./writer
 
 run-reader:
-	gcc -o reader reader.c
+	gcc -g reader.c utils.c sem.c -o reader -lpthread
 	./reader
