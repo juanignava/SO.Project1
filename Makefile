@@ -3,5 +3,5 @@ run-writer:
 	./writer
 
 run-reader:
-	gcc -g reader.c utils.c sem.c -o reader -lpthread
+	gcc -g reader.c -o reader -lpthread
 	./reader

@@ -5,8 +5,6 @@
 #include <assert.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include "utils.h"
-#include "sem.h"
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -86,7 +84,9 @@ int main()
     // fill the queue with the data
     //printf("Antes del llamado de la función");
     read_info(queue, queue_info);
-    
+
+    unlink("/tmp/project_1_queue");
+    unlink("/tmp/project_1_info"); 
    
     close(fd_queue);
     close(fd_info);

@@ -5,8 +5,6 @@
 #include <assert.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include "utils.h"
-#include "sem.h"
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -84,18 +82,16 @@ int main()
         MAP_SHARED, fd_info, 0);
 
     
-    // sem_filled begins in 0 because everuthing is empty
+    // sem_filled begins in chunk because everuthing is empty
     sem_t sem_filled;
     sem_init(&sem_filled, 1, chunk); 
-    // sem_empty begins in {chunk} because everuthing is empty
+    // sem_empty begins in 0 because everuthing is empty
     sem_t sem_empty;
     sem_init(&sem_empty, 1, 0);
     int next_input = 0;
     int next_output = 0;
 
-    // sem_filled begins in 0 because everuthing is empty
     queue_info->sem_filled = sem_filled;
-    // sem_empty begins in {chunk} because everuthing is empty
     queue_info->sem_empty = sem_empty;
     queue_info->next_input = 0;
     queue_info->next_output = 0;
