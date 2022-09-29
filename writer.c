@@ -42,6 +42,7 @@ void write_info(QueueData *queue, QueueInfo *queue_info)
         queue[queue_info->next_input].value = i;
         queue_info->next_input = (i+1) % chunk; // for circular list
         sem_post(&queue_info->sem_empty);
+        getchar(); 
     }
     
 }

@@ -42,6 +42,7 @@ void read_info(QueueData *queue, QueueInfo *queue_info)
         printf("Reading value: %d\n", val);
         queue_info->next_output = (i+1) % chunk; // for circular list
         sem_post(&queue_info->sem_filled);
+        getchar(); 
     }
     
 }
