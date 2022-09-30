@@ -33,7 +33,21 @@ typedef struct
 
 
 // FUNCTIONS
-void read_info(QueueData *queue, QueueInfo *queue_info)
+void read_info_manual(QueueData *queue, QueueInfo *queue_info)
+{
+    for (int i = 0; i < NUM_ITEMS; i++)
+    {
+        sem_wait(&queue_info->sem_empty);
+        int val = queue[queue_info->next_output].value;
+        printf("Reading value: %d\n", val);
+        queue_info->next_output = (i+1) % chunk; // for circular list
+        sem_post(&queue_info->sem_filled);
+        getchar(); 
+    }
+    
+}
+
+void read_info_auto(QueueData *queue, QueueInfo *queue_info)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
     {
@@ -46,7 +60,7 @@ void read_info(QueueData *queue, QueueInfo *queue_info)
     
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     // opens the file descriptor that has to be mapped to the
     //     shared memory
@@ -83,8 +97,16 @@ int main()
 
     // fill the queue with the data
     //printf("Antes del llamado de la función");
-    read_info(queue, queue_info);
+    if(strcmp(argv[1], "auto") == 0){
+      read_info_auto(queue, queue_info);
+    }
 
+    else if(strcmp(argv[1], "manual") == 0){
+      read_info_manual(queue, queue_info);
+    }
+    else{
+        printf("Indicate a valid operation method: manual or auto");
+    }
     unlink("/tmp/project_1_queue");
     unlink("/tmp/project_1_info"); 
    
