@@ -1,7 +1,8 @@
+
 run-writer:
 	gcc writer.c -o writer -lpthread
-	./writer
+	./writer $(method)
 
-run-reader:
+run-reader :
 	gcc -g reader.c -o reader -lpthread
-	./reader
+	./reader $(method)
