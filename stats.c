@@ -35,17 +35,33 @@ int main()
         MAP_SHARED, fd_stats, 0);
 
     // Printing stats
+    // Printing Time values
     printf("\033[1;32m");
-    printf("\n[+] Times: \n");
-    printf("\033[0m");
-    printf("    -> Total sem blocked time: %f miliseconds\n", stats->blocked_sem_time*1000);
-    printf("    -> Total kernel time: %f miliseconds\n", stats->total_kernel_time*1000);
+    printf("\n[+] Time: \n");
 
+    printf("\033[1;35m");
+    printf("    ->");
+    printf("\033[0m");
+    printf(" Total sem blocked time: %f miliseconds\n", stats->blocked_sem_time*1000);
+
+    printf("\033[1;35m");
+    printf("    ->");
+    printf("\033[0m");
+    printf(" Total kernel time: %f miliseconds\n", stats->total_kernel_time*1000);
+
+    // Printing Data values
     printf("\033[1;34m");
     printf("\n[+] Data: \n");
+
+    printf("\033[1;35m");
+    printf("    ->");
     printf("\033[0m");
-    printf("    -> Total pixels processed: %i\n", stats->total_pixels_processed);
-    printf("    -> Total pixels greater than 175: %i\n", stats->pixels_greater_than_175);
+    printf(" Total pixels processed: %i\n", stats->total_pixels_processed);
+
+    printf("\033[1;35m");
+    printf("    ->");
+    printf("\033[0m");
+    printf(" Total pixels greater than 175: %i\n", stats->pixels_greater_than_175);
 
     close(fd_stats);
     return 0;
