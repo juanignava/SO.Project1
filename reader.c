@@ -50,7 +50,9 @@ void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
     for (int i = 0; i < NUM_ITEMS; i++)
     {
 
+        clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_empty);
+        clock_t end_sem = clock();
 
         clock_t begin = clock();
         int val = queue[queue_info->next_output].value;
@@ -59,7 +61,8 @@ void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t end = clock();
 
         // Adding reading time
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC;
+        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
+        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
         sem_post(&queue_info->sem_filled);
         getchar(); 
@@ -71,7 +74,9 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
     {
+        clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_empty);
+        clock_t end_sem = clock();
 
         clock_t begin = clock();
         int val = queue[queue_info->next_output].value;
@@ -79,8 +84,8 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         queue_info->next_output = (i+1) % chunk; // for circular list
         clock_t end = clock();
 
-        // Adding reading time
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC;
+        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
+        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
         sem_post(&queue_info->sem_filled);
     }

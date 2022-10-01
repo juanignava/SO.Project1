@@ -49,8 +49,10 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
     {
+        clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
-
+        clock_t end_sem = clock();
+        
         printf("Adding value: %d\n", i);
 
         clock_t begin = clock();
@@ -60,6 +62,7 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t end = clock();
 
         stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time (for stats)
+        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
         if (i >= 176){
             stats->pixels_greater_than_175 += 1; // Adding 1 to pixels greater than 175 (for stats)
@@ -73,8 +76,10 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 void write_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
-    {
+    {   
+        clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
+        clock_t end_sem = clock();
 
         printf("Adding value: %d\n", i);
 
@@ -85,10 +90,12 @@ void write_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t end = clock();
 
         stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time (for stats)
+        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
         if (i >= 176){
             stats->pixels_greater_than_175 += 1; // Adding 1 to pixels greater than 175 (for stats)
         }
+        
         sem_post(&queue_info->sem_empty);
         getchar(); 
     }

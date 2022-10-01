@@ -35,6 +35,7 @@ int main()
         MAP_SHARED, fd_stats, 0);
 
     // Testing stats
+    printf("\nTotal sem blocked time: %f miliseconds\n", stats->blocked_sem_time*1000);
     printf("Total pixels processed: %i\n", stats->total_pixels_processed);
     printf("Total kernel time: %f miliseconds\n", stats->total_kernel_time*1000);
     printf("Total pixels greater than 175: %i\n", stats->pixels_greater_than_175);
