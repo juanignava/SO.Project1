@@ -34,11 +34,18 @@ int main()
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_stats, 0);
 
-    // Testing stats
-    printf("\nTotal sem blocked time: %f miliseconds\n", stats->blocked_sem_time*1000);
-    printf("Total pixels processed: %i\n", stats->total_pixels_processed);
-    printf("Total kernel time: %f miliseconds\n", stats->total_kernel_time*1000);
-    printf("Total pixels greater than 175: %i\n", stats->pixels_greater_than_175);
+    // Printing stats
+    printf("\033[1;32m");
+    printf("\n[+] Times: \n");
+    printf("\033[0m");
+    printf("    -> Total sem blocked time: %f miliseconds\n", stats->blocked_sem_time*1000);
+    printf("    -> Total kernel time: %f miliseconds\n", stats->total_kernel_time*1000);
+
+    printf("\033[1;34m");
+    printf("\n[+] Data: \n");
+    printf("\033[0m");
+    printf("    -> Total pixels processed: %i\n", stats->total_pixels_processed);
+    printf("    -> Total pixels greater than 175: %i\n", stats->pixels_greater_than_175);
 
     close(fd_stats);
     return 0;
