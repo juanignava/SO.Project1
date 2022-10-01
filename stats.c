@@ -13,7 +13,8 @@
 
 typedef struct
 {
-    int memory_used;
+    unsigned long real_memory_used;
+    unsigned long virtual_memory_used;
     double blocked_sem_time;
     int total_pixels_processed;
     double total_kernel_time;
@@ -35,6 +36,20 @@ int main()
         MAP_SHARED, fd_stats, 0);
 
     // Printing stats
+    // Printing Memory usage values
+    printf("\033[1;33m");
+    printf("\n[+] Memory: \n");
+
+    printf("\033[1;35m");
+    printf("    ->");
+    printf("\033[0m");
+    printf(" Total real memory usage: %li bytes\n", stats->real_memory_used);
+
+    printf("\033[1;35m");
+    printf("    ->");
+    printf("\033[0m");
+    printf(" Total virtual memory usage: %li bytes\n", stats->virtual_memory_used);
+
     // Printing Time values
     printf("\033[1;32m");
     printf("\n[+] Time: \n");

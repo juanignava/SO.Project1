@@ -34,7 +34,8 @@ typedef struct
 
 typedef struct
 {
-    int memory_used;
+    unsigned long real_memory_used;
+    unsigned long virtual_memory_used;
     double blocked_sem_time;
     int total_pixels_processed;
     double total_kernel_time;
@@ -90,6 +91,55 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         sem_post(&queue_info->sem_filled);
     }
     
+}
+
+/*
+ * Measures the current (and peak) resident and virtual memory
+ * usage of your linux C process, in bytes, accurate to nearest kB.
+ * Returns a 0 if memory info access was successful, else prints
+ * an error message and returns 1
+ */
+int getMemory( unsigned long *currRealMem, unsigned long *peakRealMem, unsigned long *currVirtMem, unsigned long *peakVirtMem, Stats *stats) {
+ 
+    // stores each word in status file
+    char buffer[1024] = "";
+    
+    // linux file contains this-process info
+    FILE* file = NULL;
+    file = fopen("/proc/self/status", "r");
+
+    if (file == NULL) {
+        printf("Call to getMemory FAILED; "
+            "linux file proc/self/status not found!\n");
+        return 1;
+    }
+
+    // read the entire file, recording mems in kB
+    while (fscanf(file, " %1023s", buffer) == 1) {
+    
+        if (strcmp(buffer, "VmRSS:") == 0) {
+            fscanf(file, " %lu", currRealMem);
+        }
+        if (strcmp(buffer, "VmHWM:") == 0) {
+            fscanf(file, " %lu", peakRealMem);
+        }
+        if (strcmp(buffer, "VmSize:") == 0) {
+            fscanf(file, " %lu", currVirtMem);
+        }
+        if (strcmp(buffer, "VmPeak:") == 0) {
+            fscanf(file, " %lu", peakVirtMem);
+        }
+    }
+    fclose(file);
+    
+    // convert kB to bytes
+    unsigned int factor = 1000;
+    *currRealMem *= factor;
+    stats->real_memory_used += *currRealMem;
+    *peakRealMem *= factor;
+    *currVirtMem *= factor;
+    stats->virtual_memory_used += *currVirtMem;
+    *peakVirtMem *= factor;
 }
 
 int main(int argc, char *argv[])
@@ -154,6 +204,9 @@ int main(int argc, char *argv[])
     unlink("/tmp/project_1_info");
 
     stats->decoders_counter -= 1;
+    unsigned long currRealMem, peakRealMem, currVirtMem, peakVirtMem;
+    int success = getMemory(&currRealMem, &peakRealMem, &currVirtMem, &peakVirtMem, stats);
+
     if (stats->encoders_counter == 0 && stats->decoders_counter == 0){
         int callStats = system("./stats");
     }
