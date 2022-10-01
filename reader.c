@@ -10,7 +10,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
-#define NUM_ITEMS 120
+#define NUM_ITEMS 100
 
 // GLOBALS
 
@@ -20,6 +20,7 @@ int chunk = 10;
 typedef struct
 {
     int value;
+    int id;
 } QueueData;
 
 
@@ -29,33 +30,46 @@ typedef struct
     sem_t sem_empty;
     int next_input;
     int next_output;
+    int amount_encoders;
+    int amount_decoders;
 } QueueInfo;
 
 
 // FUNCTIONS
-void read_info_manual(QueueData *queue, QueueInfo *queue_info)
+void read_info_manual(QueueData *queue, QueueInfo *queue_info, int image_id)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
     {
         sem_wait(&queue_info->sem_empty);
-        int val = queue[queue_info->next_output].value;
-        printf("Reading value: %d\n", val);
-        queue_info->next_output = (i+1) % chunk; // for circular list
-        sem_post(&queue_info->sem_filled);
+        if (queue[queue_info->next_output].id == image_id){
+            int val = queue[queue_info->next_output].value;
+            int read_image_id = queue[queue_info->next_output].id;
+            printf("Reading value: %d from image: %d\n", val, read_image_id);
+            queue_info->next_output = (i+1) % chunk; // for circular list
+            sem_post(&queue_info->sem_filled);
+        }
+        else{
+            sem_post(&queue_info->sem_empty);
+        }
         getchar(); 
     }
     
 }
 
-void read_info_auto(QueueData *queue, QueueInfo *queue_info)
+void read_info_auto(QueueData *queue, QueueInfo *queue_info, int image_id)
 {
     for (int i = 0; i < NUM_ITEMS; i++)
     {
         sem_wait(&queue_info->sem_empty);
-        int val = queue[queue_info->next_output].value;
-        printf("Reading value: %d\n", val);
-        queue_info->next_output = (i+1) % chunk; // for circular list
-        sem_post(&queue_info->sem_filled);
+        if (queue[queue_info->next_output].id == image_id){
+            int val = queue[queue_info->next_output].value;
+            int read_image_id = queue[queue_info->next_output].id;
+            printf("Reading value: %d from image: %d\n", val, read_image_id);
+            sem_post(&queue_info->sem_filled);
+        }
+        else{
+            sem_post(&queue_info->sem_empty);
+        }
     }
     
 }
@@ -94,15 +108,19 @@ int main(int argc, char *argv[])
     QueueInfo *queue_info = mmap(NULL, sizeof(QueueInfo), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_info, 0);
 
+    // define image id to read
+    queue_info->amount_decoders += 1;
+    int image_id = queue_info->amount_decoders;
+    printf("This is encoder: %d\n", image_id);
 
     // fill the queue with the data
     //printf("Antes del llamado de la función");
     if(strcmp(argv[1], "auto") == 0){
-      read_info_auto(queue, queue_info);
+      read_info_auto(queue, queue_info, image_id);
     }
 
     else if(strcmp(argv[1], "manual") == 0){
-      read_info_manual(queue, queue_info);
+      read_info_manual(queue, queue_info, image_id);
     }
     else{
         printf("Indicate a valid operation method: manual or auto");
