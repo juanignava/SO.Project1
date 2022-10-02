@@ -79,7 +79,7 @@ void buildImage(int width, int height, int channels, int pixels[])
             img[i+j] = pixels[i]; 
         }
     }
-    stbi_writer_png("image2.png", width, height, channels, img, width*channels);
+    stbi_write_png("image2.png", width, height, channels, img, width*channels);
 }
 
 // FUNCTIONS
