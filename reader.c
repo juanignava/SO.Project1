@@ -11,6 +11,12 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image/stb_image_write.h"
+
 #define NUM_ITEMS 180
 
 // GLOBALS
@@ -44,10 +50,44 @@ typedef struct
     int decoders_counter;
 } Stats;
 
+int getDecimal(int clave)
+{
+    int num = clave;
+    int dec_value = 0;
+ 
+    // Initializing base value to 1, i.e 2^0
+    int base = 1;
+ 
+    int temp = num;
+    while (temp) {
+        int last_digit = temp % 10;
+        temp = temp / 10;
+ 
+        dec_value += last_digit * base;
+ 
+        base = base * 2;
+    }
+ 
+    return dec_value;
+}
+
+void buildImage(int width, int height, int channels, int pixels[])
+{
+    unsigned char *img;
+    for (int i = 0; i < NUM_ITEMS; i++){
+        for (int j = 0; j < channels+1; j++){
+            img[i+j] = pixels[i]; 
+        }
+    }
+    stbi_writer_png("image2.png", width, height, channels, img, width*channels);
+}
 
 // FUNCTIONS
 void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats) 
 {
+    int width, height, channels;
+    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    int clave = 10101001;
     for (int i = 0; i < NUM_ITEMS; i++)
     {
 
@@ -58,6 +98,7 @@ void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t begin = clock();
         int val = queue[queue_info->next_output].value;
         printf("Reading value: %d\n", val);
+        val = val ^ getDecimal(clave);
         queue_info->next_output = (i+1) % chunk; // for circular list
         clock_t end = clock();
 
@@ -73,6 +114,9 @@ void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 
 void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
+    int width, height, channels;
+    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    int clave = 10101001;
     for (int i = 0; i < NUM_ITEMS; i++)
     {
         clock_t begin_sem = clock();
@@ -82,6 +126,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t begin = clock();
         int val = queue[queue_info->next_output].value;
         printf("Reading value: %d\n", val);
+        val = val ^ getDecimal(clave);
         queue_info->next_output = (i+1) % chunk; // for circular list
         clock_t end = clock();
 
