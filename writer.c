@@ -21,6 +21,7 @@ int chunk = 10;
 typedef struct
 {
     int value;
+
 } QueueData;
 
 
@@ -153,8 +154,20 @@ int getMemory( unsigned long *currRealMem, unsigned long *peakRealMem, unsigned 
     *peakVirtMem *= factor;
 }
 
+int getTime(time_t rawtime){
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    printf ( "Current raw time 2: %ld\n", rawtime);
+    printf ( "Current local time and date: %s\n", asctime (timeinfo) );
+
+}
+
 int main(int argc, char *argv[])
 {
+    time_t rawtime;
+    int timeInfo = getTime(rawtime);
+  
     // opens the file descriptor that has to be mapped to the
     //     shared memory
     int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
