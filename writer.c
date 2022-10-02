@@ -20,7 +20,6 @@
 #define NUM_ITEMS 180
 
 // GLOBALS
-
 int chunk = 10;
 
 // STRUCT
@@ -71,15 +70,14 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
-void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
+void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode)
 {
+    // load image and important data for the analysis
     int width, height, channels;
-    printf("Before reading image\n");
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
-    printf("After reading image\n");
     int clave = 10101001;
 
-    for (int i = 0, j = 0; i < width * height * channels; i++, j++)
+    for (int i = 0; i < width * height * channels; i++)
     {
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
@@ -90,8 +88,7 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         clock_t begin = clock();
         unsigned char encoded = img[i] ^ getDecimal(clave);
         queue[queue_info->next_input].value = encoded;
-        //queue[queue_info->next_input].value = i;
-        queue_info->next_input = (j + 1) % chunk; // for circular list
+        queue_info->next_input = (i + 1) % chunk; // for circular list
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
 
@@ -104,42 +101,10 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         }
 
         sem_post(&queue_info->sem_empty);
-    }
-}
 
-void write_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
-{
-    int width, height, channels;
-    printf("Before reading image\n");
-    unsigned char *img = stbi_load("image.pgm", &width, &height, &channels, 0);
-    printf("After reading image\n");
-    int clave = 10101001;
-    for (int i = 0, j = 0; i < NUM_ITEMS * (channels-1); i=i+channels-1, j++)
-    {
-        clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_filled);
-        clock_t end_sem = clock();
-
-        printf("Adding value: %d\n", i);
-
-        clock_t begin = clock();
-        int encoded = (int)img[i] ^ getDecimal(clave);
-        queue[queue_info->next_input].value = encoded;
-        //queue[queue_info->next_input].value = i;
-        queue_info->next_input = (j + 1) % chunk; // for circular list
-        stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
-        clock_t end = clock();
-
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC;        // Adding kernel time (for stats)
-        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
-
-        if ((int)img[i] >= 176)
-        {
-            stats->pixels_greater_than_175 += 1; // Adding 1 to pixels greater than 175 (for stats)
-        }
-
-        sem_post(&queue_info->sem_empty);
-        getchar();
+        // wait for an enter hit when mode is manual
+        if (strcmp(mode, "manual") == 0) getchar();
+        
     }
 }
 
@@ -263,14 +228,9 @@ int main(int argc, char *argv[])
 
     stats->encoders_counter += 1;
 
-    if (strcmp(argv[1], "auto") == 0)
+    if (strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0)
     {
-        write_info_auto(queue, queue_info, stats);
-    }
-
-    else if (strcmp(argv[1], "manual") == 0)
-    {
-        write_info_manual(queue, queue_info, stats);
+        write_info(queue, queue_info, stats, argv[1]);
     }
     else
     {

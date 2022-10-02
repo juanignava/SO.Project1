@@ -20,7 +20,6 @@
 #define NUM_ITEMS 180
 
 // GLOBALS
-
 int chunk = 10;
 
 // STRUCT
@@ -74,59 +73,18 @@ int getDecimal(int clave)
 void buildImage(int width, int height, int channels, unsigned char *pixels)
 {
     printf("Creating the image\n");
-    unsigned char *img[width*height*channels];
-    /*
-    for (int i = 0, j = 0; i < width * height * channels ; i++, j++){
-            printf("Adding value: %d\n", j);
-            img[i] = (unsigned char) pixels[i]; 
-
-    }
-    */
-    
     stbi_write_jpg("image2.jpg", width, height, channels, pixels, width*channels);
 }
 
-// FUNCTIONS
-void read_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats) 
+void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char *mode)
 {
-    int width, height, channels;
-    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
-    int *img2;
-    int clave = 10101001;
-    for (int i = 0; i < NUM_ITEMS; i++)
-    {
-
-        clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_empty);
-        clock_t end_sem = clock();
-
-        clock_t begin = clock();
-        int val = queue[queue_info->next_output].value;
-        printf("Reading value: %d\n", val);
-        val = val ^ getDecimal(clave);
-        //(img2+i)* = (char) val;
-        queue_info->next_output = (i+1) % chunk; // for circular list
-        clock_t end = clock();
-
-        // Adding reading time
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
-        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
-
-        sem_post(&queue_info->sem_filled);
-        getchar(); 
-    }
-
-    //buildImage(width, height, channels, img2);
-    
-}
-
-void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
-{
+    // Get image dimensions and data for the analysis
     int width, height, channels;
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
     unsigned char img2[width * height*channels];
     int clave = 10101001;
-    for (int i = 0, j = 0; i < width * height * channels; i++, j++)
+
+    for (int i = 0; i < width * height * channels; i++)
     {
 
         clock_t begin_sem = clock();
@@ -135,7 +93,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 
         clock_t begin = clock();
         unsigned char val = queue[queue_info->next_output].value;
-        printf("Reading value: %d in position: %d\n", val, j);
+        printf("Reading value: %d in position: %d\n", val, i);
         val = val ^ getDecimal(clave);
         img2[i] = val;
         queue_info->next_output = (i+1) % chunk; // for circular list
@@ -146,6 +104,10 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
         stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
         sem_post(&queue_info->sem_filled);
+
+        // wait for an enter hit when mode is manual
+        if (strcmp(mode, "manual") == 0) getchar();
+        
     }
 
     buildImage(width, height, channels, img2);
@@ -248,13 +210,8 @@ int main(int argc, char *argv[])
     stats->decoders_counter += 1;
     
     // fill the queue with the data
-    //printf("Antes del llamado de la función");
-    if(strcmp(argv[1], "auto") == 0){
-      read_info_auto(queue, queue_info, stats);
-    }
-
-    else if(strcmp(argv[1], "manual") == 0){
-      read_info_manual(queue, queue_info, stats);
+    if(strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0){
+      read_info_auto(queue, queue_info, stats, argv[1]);
     }
     else{
         printf("Indicate a valid operation method: manual or auto");
