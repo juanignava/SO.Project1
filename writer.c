@@ -26,7 +26,7 @@ int chunk = 10;
 // STRUCT
 typedef struct
 {
-    int value;
+    unsigned char value;
 } QueueData;
 
 typedef struct
@@ -74,19 +74,21 @@ int getDecimal(int clave)
 void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
     int width, height, channels;
+    printf("Before reading image\n");
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    printf("After reading image\n");
     int clave = 10101001;
 
-    for (int i = 0, j = 0; i < NUM_ITEMS * (channels-1); i=i+channels-1, j++)
+    for (int i = 0, j = 0; i < width * height * channels; i++, j++)
     {
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
         clock_t end_sem = clock();
 
-        printf("Adding value: %d\n", j);
+        printf("Adding value: %d in position: %d\n", img[i] ^ getDecimal(clave), i);
 
         clock_t begin = clock();
-        int encoded = (int)img[i] ^ getDecimal(clave);
+        unsigned char encoded = img[i] ^ getDecimal(clave);
         queue[queue_info->next_input].value = encoded;
         //queue[queue_info->next_input].value = i;
         queue_info->next_input = (j + 1) % chunk; // for circular list
@@ -108,7 +110,9 @@ void write_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 void write_info_manual(QueueData *queue, QueueInfo *queue_info, Stats *stats)
 {
     int width, height, channels;
-    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    printf("Before reading image\n");
+    unsigned char *img = stbi_load("image.pgm", &width, &height, &channels, 0);
+    printf("After reading image\n");
     int clave = 10101001;
     for (int i = 0, j = 0; i < NUM_ITEMS * (channels-1); i=i+channels-1, j++)
     {
