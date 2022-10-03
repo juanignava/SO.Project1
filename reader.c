@@ -28,6 +28,7 @@ typedef struct
     unsigned char value;
     int id;
     time_t raw_pixel_time;
+    sem_t sem_write_resource;
 } QueueData;
 
 
@@ -94,7 +95,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
     for (int i = 0; i < width * height * channels; )
     {
         clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_empty);
+        sem_wait(&queue_info->sem_filled);
         clock_t end_sem = clock();
 
         if (queue[queue_info->next_output].id == id)
@@ -102,12 +103,15 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
             
 
             clock_t begin = clock();
+            //sem_wait(&queue[queue_info->next_output].sem_write_resource);
             unsigned char val = queue[queue_info->next_output].value;
-            printf("Reading value: %d in position: %d\n", val, i);
+            
+            printf("Reading value: %d in position: %d from id: %d\n", val, i, queue[queue_info->next_output].id);
             int timeInfo = getTime(queue->raw_pixel_time);
             val = val ^ getDecimal(clave);
             img2[i] = val;
             queue_info->next_output = (i+1) % queue_info->chunk_size; // for circular list
+            //sem_post(&queue[queue_info->next_output].sem_write_resource);
             clock_t end = clock();
 
             // Adding reading time
@@ -128,11 +132,11 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
             }
 
             i++;
-            sem_post(&queue_info->sem_filled);
+            sem_post(&queue_info->sem_empty);
         }
         else
         {
-            sem_post(&queue_info->sem_empty);
+            sem_post(&queue_info->sem_filled);
         }
 
 

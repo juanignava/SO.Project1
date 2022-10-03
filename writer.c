@@ -21,6 +21,7 @@
 
 // GLOBALS
 // int chunk = 10;
+int file_exists;
 
 // STRUCT
 typedef struct
@@ -28,6 +29,7 @@ typedef struct
     unsigned char value;
     int id;
     time_t raw_pixel_time;
+    sem_t sem_write_resource;
 } QueueData;
 
 typedef struct
@@ -94,7 +96,8 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* ima
     {
 
         clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_filled);
+        sem_wait(&queue_info->sem_empty);
+        sem_wait(&queue[queue_info->next_input].sem_write_resource);
         clock_t end_sem = clock();
 
         time_t rawtime;
@@ -105,9 +108,11 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* ima
 
         clock_t begin = clock();
         unsigned char encoded = img[i] ^ getDecimal(clave);
+        
         queue[queue_info->next_input].value = encoded;
         queue[queue_info->next_input].id = id;
         queue_info->next_input = (i + 1) % chunk; // for circular list
+        
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
 
@@ -119,10 +124,14 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* ima
             stats->pixels_greater_than_175 += 1; // Adding 1 to pixels greater than 175 (for stats)
         }
 
-        sem_post(&queue_info->sem_empty);
 
         // wait for an enter hit when mode is manual
         if (strcmp(mode, "manual") == 0) getchar();
+
+        sem_post(&queue[queue_info->next_input].sem_write_resource);
+        sem_post(&queue_info->sem_filled);
+        
+
         
     }
 }
@@ -225,7 +234,7 @@ int main(int argc, char *argv[])
   
     // determine if the file descriptor already exists
     //   if it does, then the shared memory has been created
-    int file_exists = access("/tmp/project_1_queue", F_OK) == 0 ? 1 : 0;
+    file_exists = access("/tmp/project_1_queue", F_OK) == 0 ? 1 : 0;
 
     // opens the file descriptor that has to be mapped to the
     //     shared memory
@@ -272,12 +281,12 @@ int main(int argc, char *argv[])
 
     if (!file_exists)
     {
-        // sem_filled begins in chunk because everuthing is empty
+        // sem_filled begins in 0 because everything is empty
         sem_t sem_filled;
-        sem_init(&sem_filled, 1, chunkSize);
-        // sem_empty begins in 0 because everuthing is empty
+        sem_init(&sem_filled, 1, 0);
+        // sem_empty begins in chunk because everuthing is empty
         sem_t sem_empty;
-        sem_init(&sem_empty, 1, 0);
+        sem_init(&sem_empty, 1, chunkSize);
         int next_input = 0;
         int next_output = 0;
 
@@ -293,6 +302,15 @@ int main(int argc, char *argv[])
 
     QueueData *queue = mmap(NULL, queue_info->chunk_size * sizeof(QueueData), PROT_READ | PROT_WRITE,
                             MAP_SHARED, fd_queue, 0);
+    
+    if (!file_exists)
+    {
+        for (int i = 0; i < queue_info->chunk_size; i++)
+        {
+            sem_init(&queue[i].sem_write_resource, 1, 1);
+        }
+        
+    }
 
     close(fd_queue);
     close(fd_info);
