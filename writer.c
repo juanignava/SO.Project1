@@ -20,7 +20,7 @@
 #define NUM_ITEMS 180
 
 // GLOBALS
-int chunk = 10;
+// int chunk = 10;
 
 // STRUCT
 typedef struct
@@ -71,12 +71,19 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
-void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode)
+void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* imageName, int* chunkSize, char* mode, int* key)
 {
     // load image and important data for the analysis
     int width, height, channels;
-    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
-    int clave = 10101001;
+    unsigned char *img = stbi_load(imageName, &width, &height, &channels, 0);
+    int clave = key;
+    int chunk = chunkSize;
+
+    printf("El nombre de la imagen es: %s\n", imageName);
+    printf("El tamaño del chunk es: %i\n", chunk);
+    printf("El modo es: %s\n", mode);
+    printf("La key es: %i\n", key);
+
 
     for (int i = 0; i < width * height * channels; i++)
     {
@@ -182,6 +189,33 @@ int getTime(time_t rawtime){
 
 int main(int argc, char *argv[])
 {
+    // Se declaran variables de argumentos
+    char imageName[50];
+    strcpy(imageName, "");
+    int chunkSize = -1;
+    char mode[50];
+    strcpy(mode, "");
+    int key = -1;
+    // Se leen los argumentos
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-i") == 0) {
+            strcpy(imageName, argv[i + 1]);
+        }
+        if (strcmp(argv[i], "-n") == 0) {
+            chunkSize = atoi(argv[i + 1]);
+        }
+        if (strcmp(argv[i], "-m") == 0) {
+            strcpy(mode, argv[i + 1]);
+        }
+        if (strcmp(argv[i], "-k") == 0) {
+            key = atoi(argv[i + 1]);
+        }   
+    }
+
+    if (strcmp(imageName, "") == 0 || chunkSize < 1 || strcmp(mode, "") == 0 || key < 1) {
+        printf("No se pudo determinar la imagen, el tamaño del chunk, el modo o la clave\n");
+        return 1;
+    }
   
     // opens the file descriptor that has to be mapped to the
     //     shared memory
@@ -191,7 +225,7 @@ int main(int argc, char *argv[])
         perror("project_1_queue");
         exit(1);
     }
-    ftruncate(fd_queue, chunk * sizeof(QueueData));
+    ftruncate(fd_queue, chunkSize * sizeof(QueueData));
 
     int fd_info = open("/tmp/project_1_info", O_RDWR | O_CREAT, 0644);
     if (fd_info < 0)
@@ -219,7 +253,7 @@ int main(int argc, char *argv[])
     //      offset: 0, offset from where the mapping started
 
     // source: https://linuxhint.com/using_mmap_function_linux/
-    QueueData *queue = mmap(NULL, chunk * sizeof(QueueData), PROT_READ | PROT_WRITE,
+    QueueData *queue = mmap(NULL, chunkSize * sizeof(QueueData), PROT_READ | PROT_WRITE,
                             MAP_SHARED, fd_queue, 0);
 
     QueueInfo *queue_info = mmap(NULL, sizeof(QueueInfo), PROT_READ | PROT_WRITE,
@@ -230,7 +264,7 @@ int main(int argc, char *argv[])
 
     // sem_filled begins in chunk because everuthing is empty
     sem_t sem_filled;
-    sem_init(&sem_filled, 1, chunk);
+    sem_init(&sem_filled, 1, chunkSize);
     // sem_empty begins in 0 because everuthing is empty
     sem_t sem_empty;
     sem_init(&sem_empty, 1, 0);
@@ -244,14 +278,7 @@ int main(int argc, char *argv[])
 
     stats->encoders_counter += 1;
 
-    if (strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0)
-    {
-        write_info(queue, queue_info, stats, argv[1]);
-    }
-    else
-    {
-        printf("Indicate a valid operation method: manual or auto");
-    }
+    write_info(queue, queue_info, stats, imageName, chunkSize, mode, key);
 
     stats->encoders_counter -= 1;
     unsigned long currRealMem, peakRealMem, currVirtMem, peakVirtMem;

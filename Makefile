@@ -1,11 +1,11 @@
 
 run-writer:
 	gcc -std=c17 -Wall writer.c -o writer -lm -lpthread
-	./writer $(mode)
+	./writer -i $(image) -n $(chunk) -m $(mode) -k $(key)
 
 run-reader :
 	gcc -std=c17 -Wall reader.c -o reader -lm -lpthread
-	./reader $(mode)
+	./reader -m $(mode) -k $(key)
 
 run-test :
 	gcc -std=c17 -Wall test.c -o test -lm -lpthread

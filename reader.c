@@ -176,6 +176,25 @@ int getTime(time_t rawtime){
 
 int main(int argc, char *argv[])
 {
+    // Se declaran variables de argumentos
+    char mode[50];
+    strcpy(mode, "");
+    int key = -1;
+    // Se leen los argumentos
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-m") == 0) {
+            strcpy(mode, argv[i + 1]);
+        }
+        if (strcmp(argv[i], "-k") == 0) {
+            key = atoi(argv[i + 1]);
+        }   
+    }
+
+    if (strcmp(mode, "") == 0 || key < 1) {
+        printf("No se pudo determinar el modo o la clave\n");
+        return 1;
+    }
+    
     // opens the file descriptor that has to be mapped to the
     //     shared memory
     int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
