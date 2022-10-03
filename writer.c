@@ -47,6 +47,8 @@ typedef struct
     int pixels_greater_than_175;
     int encoders_counter;
     int decoders_counter;
+    int total_enco;
+    int total_deco;
 } Stats;
 
 int getDecimal(int clave)
@@ -73,6 +75,7 @@ int getDecimal(int clave)
 // FUNCTIONS
 void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode, int id)
 {
+    stats->total_enco ++;
     // load image and important data for the analysis
     int width, height, channels;
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
@@ -234,13 +237,15 @@ int main(int argc, char *argv[])
         queue_info->next_input = 0;
         queue_info->next_output = 0;
 
+        int total_enco = 0;
+
     }
     
     stats->encoders_counter += 1;
 
     if (strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0)
     {
-        write_info(queue, queue_info, stats, argv[1], stats->encoders_counter);
+        write_info(queue, queue_info, stats, argv[1], stats->total_enco);
     }
     else
     {

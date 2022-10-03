@@ -48,6 +48,8 @@ typedef struct
     int pixels_greater_than_175;
     int encoders_counter;
     int decoders_counter;
+    int total_enco;
+    int total_deco;
 } Stats;
 
 int getDecimal(int clave)
@@ -79,6 +81,7 @@ void buildImage(int width, int height, int channels, unsigned char *pixels)
 
 void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char *mode, int id)
 {
+    stats->total_deco++;
     // Get image dimensions and data for the analysis
     int width, height, channels;
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
@@ -230,7 +233,7 @@ int main(int argc, char *argv[])
     
     // fill the queue with the data
     if(strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0){
-      read_info_auto(queue, queue_info, stats, argv[1], stats->decoders_counter);
+      read_info_auto(queue, queue_info, stats, argv[1], stats->total_deco);
     }
     else{
         printf("Indicate a valid operation method: manual or auto");
