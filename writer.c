@@ -35,6 +35,8 @@ typedef struct
 
 typedef struct
 {
+    sem_t sem_write;
+    sem_t sem_read;
     sem_t sem_filled;
     sem_t sem_empty;
     int next_input;
@@ -111,7 +113,7 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
 
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_empty);
-        sem_wait(&queue[queue_info->next_input].sem_write_resource);
+        //sem_wait(&queue[queue_info->next_input].sem_write_resource);
         clock_t end_sem = clock();
 
         time_t rawtime;
@@ -121,11 +123,13 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
         int timeInfo = getTime(queue->raw_pixel_time);
 
         clock_t begin = clock();
+        sem_wait(&queue_info->sem_write);
         unsigned char encoded = img[i] ^ getDecimal(clave);
         
         queue[queue_info->next_input].value = encoded;
         queue[queue_info->next_input].id = id;
         queue_info->next_input = (i + 1) % chunk; // for circular list
+        sem_post(&queue_info->sem_write);
         
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
@@ -142,7 +146,7 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
         // wait for an enter hit when mode is manual
         if (strcmp(mode, "manual") == 0) getchar();
 
-        sem_post(&queue[queue_info->next_input].sem_write_resource);
+        //sem_post(&queue[queue_info->next_input].sem_write_resource);
         sem_post(&queue_info->sem_filled);
         
 
@@ -322,6 +326,9 @@ int main(int argc, char *argv[])
         queue_info->chunk_size = chunkSize;
 
         int total_enco = 0;
+
+        sem_init(&queue_info->sem_write, 1, 1);
+        sem_init(&queue_info->sem_read, 1, 1);
 
     }
 
