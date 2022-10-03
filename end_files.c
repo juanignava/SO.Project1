@@ -1,3 +1,6 @@
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
 int main(int argc, char const *argv[])
 {
     unlink("/tmp/project_1_queue");
