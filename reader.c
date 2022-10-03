@@ -26,6 +26,7 @@ int chunk = 10;
 typedef struct
 {
     unsigned char value;
+    int id;
 } QueueData;
 
 
@@ -76,7 +77,7 @@ void buildImage(int width, int height, int channels, unsigned char *pixels)
     stbi_write_jpg("image2.jpg", width, height, channels, pixels, width*channels);
 }
 
-void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char *mode)
+void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char *mode, int id)
 {
     // Get image dimensions and data for the analysis
     int width, height, channels;
@@ -87,23 +88,33 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char 
     for (int i = 0; i < width * height * channels; i++)
     {
 
-        clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_empty);
-        clock_t end_sem = clock();
+        if (queue[queue_info->next_output].id == id)
+        {
+            clock_t begin_sem = clock();
+            sem_wait(&queue_info->sem_empty);
+            clock_t end_sem = clock();
 
-        clock_t begin = clock();
-        unsigned char val = queue[queue_info->next_output].value;
-        printf("Reading value: %d in position: %d\n", val, i);
-        val = val ^ getDecimal(clave);
-        img2[i] = val;
-        queue_info->next_output = (i+1) % chunk; // for circular list
-        clock_t end = clock();
+            clock_t begin = clock();
+            unsigned char val = queue[queue_info->next_output].value;
+            printf("Reading value: %d in position: %d\n", val, i);
+            val = val ^ getDecimal(clave);
+            img2[i] = val;
+            queue_info->next_output = (i+1) % chunk; // for circular list
+            clock_t end = clock();
 
-        // Adding reading time
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
-        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
+            // Adding reading time
+            stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
+            stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
-        sem_post(&queue_info->sem_filled);
+            sem_post(&queue_info->sem_filled);
+        }
+        else
+        {
+            sem_post(&queue_info->sem_empty);
+        }
+
+
+        
 
         // wait for an enter hit when mode is manual
         if (strcmp(mode, "manual") == 0) getchar();
@@ -211,7 +222,7 @@ int main(int argc, char *argv[])
     
     // fill the queue with the data
     if(strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0){
-      read_info_auto(queue, queue_info, stats, argv[1]);
+      read_info_auto(queue, queue_info, stats, argv[1], stats->decoders_counter);
     }
     else{
         printf("Indicate a valid operation method: manual or auto");

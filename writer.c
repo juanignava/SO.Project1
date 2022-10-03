@@ -26,6 +26,7 @@ int chunk = 10;
 typedef struct
 {
     unsigned char value;
+    int id;
 } QueueData;
 
 typedef struct
@@ -70,7 +71,7 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
-void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode)
+void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode, int id)
 {
     // load image and important data for the analysis
     int width, height, channels;
@@ -88,6 +89,7 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mod
         clock_t begin = clock();
         unsigned char encoded = img[i] ^ getDecimal(clave);
         queue[queue_info->next_input].value = encoded;
+        queue[queue_info->next_input].id = id;
         queue_info->next_input = (i + 1) % chunk; // for circular list
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
@@ -230,7 +232,7 @@ int main(int argc, char *argv[])
 
     if (strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0)
     {
-        write_info(queue, queue_info, stats, argv[1]);
+        write_info(queue, queue_info, stats, argv[1], stats->encoders_counter);
     }
     else
     {
