@@ -27,6 +27,7 @@ typedef struct
 {
     unsigned char value;
     int id;
+    time_t raw_pixel_time;
 } QueueData;
 
 
@@ -100,6 +101,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char 
             clock_t begin = clock();
             unsigned char val = queue[queue_info->next_output].value;
             printf("Reading value: %d in position: %d\n", val, i);
+            int timeInfo = getTime(queue->raw_pixel_time);
             val = val ^ getDecimal(clave);
             img2[i] = val;
             queue_info->next_output = (i+1) % chunk; // for circular list
@@ -183,6 +185,15 @@ int getMemory( unsigned long *currRealMem, unsigned long *peakRealMem, unsigned 
     *currVirtMem *= factor;
     stats->virtual_memory_used += *currVirtMem;
     *peakVirtMem *= factor;
+}
+
+int getTime(time_t rawtime){
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    //printf ( "Current raw time 2: %ld\n", rawtime);
+    printf ( "Pixel saved local time and date: %s\n", asctime (timeinfo) );
+
 }
 
 int main(int argc, char *argv[])

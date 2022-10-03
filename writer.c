@@ -27,6 +27,7 @@ typedef struct
 {
     unsigned char value;
     int id;
+    time_t raw_pixel_time;
 } QueueData;
 
 typedef struct
@@ -83,11 +84,16 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mod
 
     for (int i = 0; i < width * height * channels; i++)
     {
+
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
         clock_t end_sem = clock();
 
+        time_t rawtime;
+        queue->raw_pixel_time = rawtime;
+        
         printf("Adding value: %d in position: %d\n", img[i] ^ getDecimal(clave), i);
+        int timeInfo = getTime(queue->raw_pixel_time);
 
         clock_t begin = clock();
         unsigned char encoded = img[i] ^ getDecimal(clave);
@@ -168,6 +174,15 @@ int getMemory(unsigned long *currRealMem, unsigned long *peakRealMem, unsigned l
     *currVirtMem *= factor;
     stats->virtual_memory_used += *currVirtMem;
     *peakVirtMem *= factor;
+}
+
+int getTime(time_t rawtime){
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    //printf ( "Current raw time 2: %ld\n", rawtime);
+    printf ( "Pixel current local time and date: %s\n", asctime (timeinfo) );
+
 }
 
 int main(int argc, char *argv[])
