@@ -83,6 +83,7 @@ void buildImage(int width, int height, int channels, unsigned char *pixels)
 
 void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode, int* key, int id)
 {
+    printf("Numero de deco: %d\n", stats->total_deco);
     stats->total_deco++;
     // Get image dimensions and data for the analysis
     int width, height, channels;
@@ -90,14 +91,15 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
     unsigned char img2[width * height*channels];
     int clave = key;
 
-    for (int i = 0; i < width * height * channels; i++)
+    for (int i = 0; i < width * height * channels; )
     {
+        clock_t begin_sem = clock();
+        sem_wait(&queue_info->sem_empty);
+        clock_t end_sem = clock();
 
         if (queue[queue_info->next_output].id == id)
         {
-            clock_t begin_sem = clock();
-            sem_wait(&queue_info->sem_empty);
-            clock_t end_sem = clock();
+            
 
             clock_t begin = clock();
             unsigned char val = queue[queue_info->next_output].value;
@@ -112,6 +114,20 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
             stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
             stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
+            //sem_post(&queue_info->sem_filled);
+
+            // wait for an enter hit when mode is manual
+            if (strcmp(mode, "manual") == 0)
+            {
+                char received_char = getchar();
+                if (received_char == 'q')
+                {
+                    mode = "auto";
+                }
+                
+            }
+
+            i++;
             sem_post(&queue_info->sem_filled);
         }
         else
@@ -122,16 +138,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
 
         
 
-        // wait for an enter hit when mode is manual
-        if (strcmp(mode, "manual") == 0)
-        {
-            char received_char = getchar();
-            if (received_char == 'q')
-            {
-                mode = "auto";
-            }
-            
-        }
+        
         
     }
 

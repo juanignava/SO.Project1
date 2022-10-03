@@ -293,6 +293,10 @@ int main(int argc, char *argv[])
 
     QueueData *queue = mmap(NULL, queue_info->chunk_size * sizeof(QueueData), PROT_READ | PROT_WRITE,
                             MAP_SHARED, fd_queue, 0);
+
+    close(fd_queue);
+    close(fd_info);
+    close(fd_stats);
     
     stats->encoders_counter += 1;
 
@@ -306,8 +310,6 @@ int main(int argc, char *argv[])
     {
         int callStats = system("./stats");
     }
-    close(fd_queue);
-    close(fd_info);
-    close(fd_stats);
+    
     return 0;
 }
