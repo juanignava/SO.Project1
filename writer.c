@@ -18,6 +18,7 @@
 #include "stb_image/stb_image_write.h"
 
 #define NUM_ITEMS 180
+#define MAX_IMAGES 50
 
 // GLOBALS
 // int chunk = 10;
@@ -40,6 +41,15 @@ typedef struct
     int next_output;
     int chunk_size;
 } QueueInfo;
+
+typedef struct
+{
+    int id;
+    int width;
+    int height;
+    int channels;
+} ImageData;
+
 
 typedef struct
 {
@@ -77,7 +87,7 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
-void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* imageName, int* chunkSize, char* mode, int* key, int id)
+void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData *images, char* imageName, int* chunkSize, char* mode, int* key, int id)
 {
     stats->total_enco ++;
     // load image and important data for the analysis
@@ -85,6 +95,10 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* ima
     unsigned char *img = stbi_load(imageName, &width, &height, &channels, 0);
     int clave = key;
     int chunk = chunkSize;
+    images[id].id = id;
+    images[id].width = width;
+    images[id].height = height;
+    images[id].channels = channels;
 
     printf("El nombre de la imagen es: %s\n", imageName);
     printf("El tamaño del chunk es: %i\n", chunk);
@@ -262,6 +276,14 @@ int main(int argc, char *argv[])
     }
     ftruncate(fd_stats, sizeof(Stats));
 
+    int fd_images = open("/tmp/project_1_images", O_RDWR | O_CREAT, 0644);
+    if (fd_stats < 0)
+    {
+        perror("project_1_images");
+        exit(1);
+    }
+    ftruncate(fd_images, MAX_IMAGES * sizeof(ImageData));
+
     // memory mapping function instance
     //      address: NULL means the kernel can place the mapping anywhere it sees fit
     //      lenght: number of bytes to be mapped, the array will contain 10 integers
@@ -278,6 +300,9 @@ int main(int argc, char *argv[])
 
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
                         MAP_SHARED, fd_stats, 0);
+
+    ImageData *images = mmap(NULL, MAX_IMAGES*sizeof(ImageData), PROT_READ | PROT_WRITE,
+                        MAP_SHARED, fd_images, 0);
 
     if (!file_exists)
     {
@@ -318,7 +343,7 @@ int main(int argc, char *argv[])
     
     stats->encoders_counter += 1;
 
-    write_info(queue, queue_info, stats, imageName, chunkSize, mode, key, stats->total_enco);
+    write_info(queue, queue_info, stats, images, imageName, chunkSize, mode, key, stats->total_enco);
 
     stats->encoders_counter -= 1;
     unsigned long currRealMem, peakRealMem, currVirtMem, peakVirtMem;

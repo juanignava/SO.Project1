@@ -18,6 +18,7 @@
 #include "stb_image/stb_image_write.h"
 
 #define NUM_ITEMS 180
+#define MAX_IMAGES 50
 
 // GLOBALS
 //int chunk = 10;
@@ -40,6 +41,14 @@ typedef struct
     int next_output;
     int chunk_size;
 } QueueInfo;
+
+typedef struct
+{
+    int id;
+    int width;
+    int height;
+    int channels;
+} ImageData;
 
 typedef struct
 {
@@ -76,19 +85,27 @@ int getDecimal(int clave)
     return dec_value;
 }
 
-void buildImage(int width, int height, int channels, unsigned char *pixels)
+void buildImage(int id, int width, int height, int channels, unsigned char *pixels)
 {
     printf("Creating the image\n");
-    stbi_write_jpg("image2.jpg", width, height, channels, pixels, width*channels);
+    char id_str[10];
+    sprintf(id_str, "%d", id);
+    char filename[] = "result_";
+    strcat(filename, id_str);
+    strcat(filename, ".jpg");
+    stbi_write_jpg(filename, width, height, channels, pixels, width*channels);
 }
 
-void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode, int* key, int id)
+void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData *images, char* mode, int* key, int id)
 {
     printf("Numero de deco: %d\n", stats->total_deco);
     stats->total_deco++;
     // Get image dimensions and data for the analysis
     int width, height, channels;
-    unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    //unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
+    width = images[id].width;
+    height = images[id].height;
+    channels = images[id].channels;
     unsigned char img2[width * height*channels];
     int clave = key;
 
@@ -146,7 +163,7 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char*
         
     }
 
-    buildImage(width, height, channels, img2);
+    buildImage(id, width, height, channels, img2);
     
 }
 
@@ -246,6 +263,14 @@ int main(int argc, char *argv[])
         exit(1);
     }
     ftruncate(fd_stats, sizeof(Stats));
+
+    int fd_images = open("/tmp/project_1_images", O_RDWR | O_CREAT, 0644);
+    if (fd_stats < 0)
+    {
+        perror("project_1_images");
+        exit(1);
+    }
+    ftruncate(fd_images, MAX_IMAGES * sizeof(ImageData));
     
     // memory mapping function instance
     //      address: NULL means the kernel can place the mapping anywhere it sees fit
@@ -265,6 +290,9 @@ int main(int argc, char *argv[])
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_stats, 0);
 
+    ImageData *images = mmap(NULL, MAX_IMAGES*sizeof(ImageData), PROT_READ | PROT_WRITE,
+                        MAP_SHARED, fd_images, 0);
+
     int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
     if (fd_queue < 0) {
         perror("project_1_queue");
@@ -279,7 +307,7 @@ int main(int argc, char *argv[])
     
     // fill the queue with the data
 
-    read_info_auto(queue, queue_info, stats, mode, key, stats->total_deco);
+    read_info_auto(queue, queue_info, stats, images, mode, key, stats->total_deco);
 
     unlink("/tmp/project_1_queue");
     unlink("/tmp/project_1_info");
