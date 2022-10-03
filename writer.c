@@ -21,10 +21,11 @@
 #define MAX_IMAGES 50
 
 // GLOBALS
-// int chunk = 10;
 int file_exists;
 
 // STRUCT
+
+// struct for the shared memory blocks
 typedef struct
 {
     unsigned char value;
@@ -33,6 +34,7 @@ typedef struct
     sem_t sem_write_resource;
 } QueueData;
 
+// struct for the Queue general data
 typedef struct
 {
     sem_t sem_write;
@@ -44,6 +46,7 @@ typedef struct
     int chunk_size;
 } QueueInfo;
 
+// struct for the extra information of each image
 typedef struct
 {
     int id;
@@ -52,7 +55,7 @@ typedef struct
     int channels;
 } ImageData;
 
-
+// struct with the stats
 typedef struct
 {
     unsigned long real_memory_used;
@@ -67,6 +70,9 @@ typedef struct
     int total_deco;
 } Stats;
 
+/**
+ * This function passes an int into a binary for the key
+ */
 int getDecimal(int clave)
 {
     int num = clave;
@@ -89,6 +95,10 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
+
+/**
+ * Write info to the shared memory
+ */
 void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData *images, char* imageName, int* chunkSize, char* mode, int* key, int id)
 {
     stats->total_enco ++;
@@ -97,41 +107,34 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
     unsigned char *img = stbi_load(imageName, &width, &height, &channels, 0);
     int clave = key;
     int chunk = chunkSize;
+
+    // save the image information
     images[id].id = id;
     images[id].width = width;
     images[id].height = height;
     images[id].channels = channels;
 
-    printf("El nombre de la imagen es: %s\n", imageName);
-    printf("El tamaño del chunk es: %i\n", chunk);
-    printf("El modo es: %s\n", mode);
-    printf("La key es: %i\n", key);
-
-
     for (int i = 0; i < width * height * channels; i++)
     {
-        
-
+        // calculate wait time and down semaphores
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_empty);
         sem_wait(&queue_info->sem_write);
-        //sem_wait(&queue[queue_info->next_input].sem_write_resource);
         clock_t end_sem = clock();
 
         time_t rawtime;
         queue->raw_pixel_time = rawtime;
         
+        // add the value to shared memory
         printf("Adding value: %d in position: %d\n", img[i] ^ getDecimal(clave), i);
         int timeInfo = getTime(queue->raw_pixel_time);
 
+        // begin kernel time
         clock_t begin = clock();
-        
         unsigned char encoded = img[i] ^ getDecimal(clave);
         
         queue[queue_info->next_input].value = encoded;
         queue[queue_info->next_input].id = id;
-        
-        
         
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
@@ -139,22 +142,18 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
         stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC;        // Adding kernel time (for stats)
         stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
+        // calculate pixels over 175
         if ((int)img[i] >= 176)
         {
             stats->pixels_greater_than_175 += 1; // Adding 1 to pixels greater than 175 (for stats)
         }
 
-
         // wait for an enter hit when mode is manual
         if (strcmp(mode, "manual") == 0) getchar();
-
-        //sem_post(&queue[queue_info->next_input].sem_write_resource);
 
         queue_info->next_input = (i + 1) % chunk; // for circular list
         sem_post(&queue_info->sem_write);
         sem_post(&queue_info->sem_filled);
-        
-
         
     }
 }
@@ -165,7 +164,6 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
  * Returns a 0 if memory info access was successful, else prints
  * an error message and returns 1
  */
-
 int getMemory(unsigned long *currRealMem, unsigned long *peakRealMem, unsigned long *currVirtMem, unsigned long *peakVirtMem, Stats *stats)
 {
 
@@ -216,6 +214,9 @@ int getMemory(unsigned long *currRealMem, unsigned long *peakRealMem, unsigned l
     *peakVirtMem *= factor;
 }
 
+/**
+ * Get the time information
+ */
 int getTime(time_t rawtime){
     struct tm * timeinfo;
     time ( &rawtime );
@@ -227,7 +228,7 @@ int getTime(time_t rawtime){
 
 int main(int argc, char *argv[])
 {
-    // Se declaran variables de argumentos
+    // Get arguments from command line
     char imageName[50];
     strcpy(imageName, "");
     int chunkSize = -1;
@@ -250,8 +251,9 @@ int main(int argc, char *argv[])
         }   
     }
 
+    // validate arguments
     if (strcmp(imageName, "") == 0 || chunkSize < 1 || strcmp(mode, "") == 0 || key < 1) {
-        printf("No se pudo determinar la imagen, el tamaño del chunk, el modo o la clave\n");
+        printf("Can not identify the image, chunk or the key\n");
         return 1;
     }
   
@@ -269,6 +271,7 @@ int main(int argc, char *argv[])
     }
     ftruncate(fd_queue, chunkSize * sizeof(QueueData));
 
+    // file descriptor for the queues shared data
     int fd_info = open("/tmp/project_1_info", O_RDWR | O_CREAT, 0644);
     if (fd_info < 0)
     {
@@ -277,6 +280,7 @@ int main(int argc, char *argv[])
     }
     ftruncate(fd_info, sizeof(QueueInfo));
 
+    // file descriptor for the queues stats
     int fd_stats = open("/tmp/project_1_stats", O_RDWR | O_CREAT, 0644);
     if (fd_stats < 0)
     {
@@ -285,6 +289,7 @@ int main(int argc, char *argv[])
     }
     ftruncate(fd_stats, sizeof(Stats));
 
+    // file descroptor for the images
     int fd_images = open("/tmp/project_1_images", O_RDWR | O_CREAT, 0644);
     if (fd_stats < 0)
     {
@@ -303,7 +308,6 @@ int main(int argc, char *argv[])
     //      offset: 0, offset from where the mapping started
 
     // source: https://linuxhint.com/using_mmap_function_linux/
-
     QueueInfo *queue_info = mmap(NULL, sizeof(QueueInfo), PROT_READ | PROT_WRITE,
                                  MAP_SHARED, fd_info, 0);
 
@@ -313,6 +317,7 @@ int main(int argc, char *argv[])
     ImageData *images = mmap(NULL, MAX_IMAGES*sizeof(ImageData), PROT_READ | PROT_WRITE,
                         MAP_SHARED, fd_images, 0);
 
+    // if the file does not exist init the important data
     if (!file_exists)
     {
         // sem_filled begins in 0 because everything is empty
@@ -324,6 +329,7 @@ int main(int argc, char *argv[])
         int next_input = 0;
         int next_output = 0;
 
+        // init queue info shared data
         queue_info->sem_filled = sem_filled;
         queue_info->sem_empty = sem_empty;
         queue_info->next_input = 0;
@@ -339,15 +345,6 @@ int main(int argc, char *argv[])
 
     QueueData *queue = mmap(NULL, queue_info->chunk_size * sizeof(QueueData), PROT_READ | PROT_WRITE,
                             MAP_SHARED, fd_queue, 0);
-    
-    if (!file_exists)
-    {
-        for (int i = 0; i < queue_info->chunk_size; i++)
-        {
-            sem_init(&queue[i].sem_write_resource, 1, 1);
-        }
-        
-    }
 
     close(fd_queue);
     close(fd_info);

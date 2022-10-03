@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 
     // validate the arguments
     if (strcmp(mode, "") == 0 || key < 1) {
-        printf("No se pudo determinar el modo o la clave\n");
+        printf("Can not identify the key\n");
         return 1;
     }
     
