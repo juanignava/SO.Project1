@@ -113,27 +113,30 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, Image
 
     for (int i = 0; i < width * height * channels; )
     {
+        
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_filled);
+        sem_wait(&queue_info->sem_read);
         clock_t end_sem = clock();
+        int index = queue_info->next_output;
 
-        if (queue[queue_info->next_output].id == id)
+        if (queue[index].id == id)
         {
             
 
             clock_t begin = clock();
             //sem_wait(&queue[queue_info->next_output].sem_write_resource);
-            sem_wait(&queue_info->sem_read);
-            unsigned char val = queue[queue_info->next_output].value;
-            queue_info->next_output = (i+1) % queue_info->chunk_size; // for circular list
-            printf("Reading value: %d in position: %d from id: %d\n", val, i, queue[queue_info->next_output].id);
+            
+            unsigned char val = queue[index].value;
+            
+            printf("Reading value: %d in position: %d from id: %d\n", val, i, queue[index].id);
             
             int timeInfo = getTime(queue->raw_pixel_time);
             val = val ^ getDecimal(clave);
             img2[i] = val;
             //queue_info->next_output = (i+1) % queue_info->chunk_size; // for circular list
             //sem_post(&queue[queue_info->next_output].sem_write_resource);
-            sem_post(&queue_info->sem_read);
+            
             clock_t end = clock();
 
             // Adding reading time
@@ -153,14 +156,18 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, Image
                 
             }
 
+            
+            queue_info->next_output = (i+1) % queue_info->chunk_size; // for circular list
             i++;
+            sem_post(&queue_info->sem_read);
             sem_post(&queue_info->sem_empty);
         }
         else
         {
+            sem_post(&queue_info->sem_read);
             sem_post(&queue_info->sem_filled);
         }
-
+        //sem_post(&queue_info->sem_read);
 
         
 

@@ -110,9 +110,11 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
 
     for (int i = 0; i < width * height * channels; i++)
     {
+        
 
         clock_t begin_sem = clock();
         sem_wait(&queue_info->sem_empty);
+        sem_wait(&queue_info->sem_write);
         //sem_wait(&queue[queue_info->next_input].sem_write_resource);
         clock_t end_sem = clock();
 
@@ -123,13 +125,13 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
         int timeInfo = getTime(queue->raw_pixel_time);
 
         clock_t begin = clock();
-        sem_wait(&queue_info->sem_write);
+        
         unsigned char encoded = img[i] ^ getDecimal(clave);
         
         queue[queue_info->next_input].value = encoded;
         queue[queue_info->next_input].id = id;
-        queue_info->next_input = (i + 1) % chunk; // for circular list
-        sem_post(&queue_info->sem_write);
+        
+        
         
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
@@ -147,6 +149,9 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, ImageData
         if (strcmp(mode, "manual") == 0) getchar();
 
         //sem_post(&queue[queue_info->next_input].sem_write_resource);
+
+        queue_info->next_input = (i + 1) % chunk; // for circular list
+        sem_post(&queue_info->sem_write);
         sem_post(&queue_info->sem_filled);
         
 
