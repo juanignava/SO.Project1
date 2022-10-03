@@ -7,6 +7,6 @@ run-reader :
 	gcc -std=c17 -Wall reader.c -o reader -lm -lpthread
 	./reader -m $(mode) -k $(key)
 
-run-test :
-	gcc -std=c17 -Wall test.c -o test -lm -lpthread
-	./test 
+end:
+	gcc end_files.c -o end_files
+	./end_files

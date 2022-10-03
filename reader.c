@@ -20,12 +20,13 @@
 #define NUM_ITEMS 180
 
 // GLOBALS
-int chunk = 10;
+//int chunk = 10;
 
 // STRUCT
 typedef struct
 {
     unsigned char value;
+    int id;
     time_t raw_pixel_time;
 } QueueData;
 
@@ -36,6 +37,7 @@ typedef struct
     sem_t sem_empty;
     int next_input;
     int next_output;
+    int chunk_size;
 } QueueInfo;
 
 typedef struct
@@ -48,6 +50,8 @@ typedef struct
     int pixels_greater_than_175;
     int encoders_counter;
     int decoders_counter;
+    int total_enco;
+    int total_deco;
 } Stats;
 
 int getDecimal(int clave)
@@ -77,38 +81,57 @@ void buildImage(int width, int height, int channels, unsigned char *pixels)
     stbi_write_jpg("image2.jpg", width, height, channels, pixels, width*channels);
 }
 
-void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char *mode)
+void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* mode, int* key, int id)
 {
+    stats->total_deco++;
     // Get image dimensions and data for the analysis
     int width, height, channels;
     unsigned char *img = stbi_load("image.jpg", &width, &height, &channels, 0);
     unsigned char img2[width * height*channels];
-    int clave = 10101001;
+    int clave = key;
 
     for (int i = 0; i < width * height * channels; i++)
     {
 
-        clock_t begin_sem = clock();
-        sem_wait(&queue_info->sem_empty);
-        clock_t end_sem = clock();
+        if (queue[queue_info->next_output].id == id)
+        {
+            clock_t begin_sem = clock();
+            sem_wait(&queue_info->sem_empty);
+            clock_t end_sem = clock();
 
-        clock_t begin = clock();
-        unsigned char val = queue[queue_info->next_output].value;
-        printf("Reading value: %d in position: %d\n", val, i);
-        int timeInfo = getTime(queue->raw_pixel_time);
-        val = val ^ getDecimal(clave);
-        img2[i] = val;
-        queue_info->next_output = (i+1) % chunk; // for circular list
-        clock_t end = clock();
+            clock_t begin = clock();
+            unsigned char val = queue[queue_info->next_output].value;
+            printf("Reading value: %d in position: %d\n", val, i);
+            int timeInfo = getTime(queue->raw_pixel_time);
+            val = val ^ getDecimal(clave);
+            img2[i] = val;
+            queue_info->next_output = (i+1) % queue_info->chunk_size; // for circular list
+            clock_t end = clock();
 
-        // Adding reading time
-        stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
-        stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
+            // Adding reading time
+            stats->total_kernel_time += (double)(end - begin) / CLOCKS_PER_SEC; // Adding kernel time to stats
+            stats->blocked_sem_time += (double)(end_sem - begin_sem) / CLOCKS_PER_SEC; // Adding blocked sem time to stats
 
-        sem_post(&queue_info->sem_filled);
+            sem_post(&queue_info->sem_filled);
+        }
+        else
+        {
+            sem_post(&queue_info->sem_empty);
+        }
+
+
+        
 
         // wait for an enter hit when mode is manual
-        if (strcmp(mode, "manual") == 0) getchar();
+        if (strcmp(mode, "manual") == 0)
+        {
+            char received_char = getchar();
+            if (received_char == 'q')
+            {
+                mode = "auto";
+            }
+            
+        }
         
     }
 
@@ -195,14 +218,9 @@ int main(int argc, char *argv[])
         return 1;
     }
     
+    
     // opens the file descriptor that has to be mapped to the
     //     shared memory
-    int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
-    if (fd_queue < 0) {
-        perror("project_1_queue");
-        exit(1);
-    }
-    ftruncate(fd_queue, chunk*sizeof(QueueData));
     
     int fd_info = open("/tmp/project_1_info", O_RDWR | O_CREAT, 0644);
     if (fd_info < 0) {
@@ -228,8 +246,7 @@ int main(int argc, char *argv[])
     //      offset: 0, offset from where the mapping started
 
     // source: https://linuxhint.com/using_mmap_function_linux/
-    QueueData *queue =  mmap(NULL, chunk*sizeof(QueueData), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd_queue, 0);
+
     
     QueueInfo *queue_info = mmap(NULL, sizeof(QueueInfo), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_info, 0);
@@ -237,15 +254,22 @@ int main(int argc, char *argv[])
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_stats, 0);
 
+    int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
+    if (fd_queue < 0) {
+        perror("project_1_queue");
+        exit(1);
+    }
+    ftruncate(fd_queue, queue_info->chunk_size *sizeof(QueueData));
+
+    QueueData *queue =  mmap(NULL, queue_info->chunk_size *sizeof(QueueData), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_queue, 0);
+
     stats->decoders_counter += 1;
     
     // fill the queue with the data
-    if(strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0){
-      read_info_auto(queue, queue_info, stats, argv[1]);
-    }
-    else{
-        printf("Indicate a valid operation method: manual or auto");
-    }
+
+    read_info_auto(queue, queue_info, stats, mode, key, stats->total_deco);
+
     unlink("/tmp/project_1_queue");
     unlink("/tmp/project_1_info");
 

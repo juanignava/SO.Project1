@@ -26,6 +26,7 @@
 typedef struct
 {
     unsigned char value;
+    int id;
     time_t raw_pixel_time;
 } QueueData;
 
@@ -35,6 +36,7 @@ typedef struct
     sem_t sem_empty;
     int next_input;
     int next_output;
+    int chunk_size;
 } QueueInfo;
 
 typedef struct
@@ -47,6 +49,8 @@ typedef struct
     int pixels_greater_than_175;
     int encoders_counter;
     int decoders_counter;
+    int total_enco;
+    int total_deco;
 } Stats;
 
 int getDecimal(int clave)
@@ -71,8 +75,9 @@ int getDecimal(int clave)
 }
 
 // FUNCTIONS
-void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* imageName, int* chunkSize, char* mode, int* key)
+void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* imageName, int* chunkSize, char* mode, int* key, int id)
 {
+    stats->total_enco ++;
     // load image and important data for the analysis
     int width, height, channels;
     unsigned char *img = stbi_load(imageName, &width, &height, &channels, 0);
@@ -101,6 +106,7 @@ void write_info(QueueData *queue, QueueInfo *queue_info, Stats *stats, char* ima
         clock_t begin = clock();
         unsigned char encoded = img[i] ^ getDecimal(clave);
         queue[queue_info->next_input].value = encoded;
+        queue[queue_info->next_input].id = id;
         queue_info->next_input = (i + 1) % chunk; // for circular list
         stats->total_pixels_processed += 1;       // Adding 1 to total pixels encoded (for stats)
         clock_t end = clock();
@@ -217,6 +223,10 @@ int main(int argc, char *argv[])
         return 1;
     }
   
+    // determine if the file descriptor already exists
+    //   if it does, then the shared memory has been created
+    int file_exists = access("/tmp/project_1_queue", F_OK) == 0 ? 1 : 0;
+
     // opens the file descriptor that has to be mapped to the
     //     shared memory
     int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
@@ -253,8 +263,6 @@ int main(int argc, char *argv[])
     //      offset: 0, offset from where the mapping started
 
     // source: https://linuxhint.com/using_mmap_function_linux/
-    QueueData *queue = mmap(NULL, chunkSize * sizeof(QueueData), PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd_queue, 0);
 
     QueueInfo *queue_info = mmap(NULL, sizeof(QueueInfo), PROT_READ | PROT_WRITE,
                                  MAP_SHARED, fd_info, 0);
@@ -262,23 +270,33 @@ int main(int argc, char *argv[])
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
                         MAP_SHARED, fd_stats, 0);
 
-    // sem_filled begins in chunk because everuthing is empty
-    sem_t sem_filled;
-    sem_init(&sem_filled, 1, chunkSize);
-    // sem_empty begins in 0 because everuthing is empty
-    sem_t sem_empty;
-    sem_init(&sem_empty, 1, 0);
-    int next_input = 0;
-    int next_output = 0;
+    if (!file_exists)
+    {
+        // sem_filled begins in chunk because everuthing is empty
+        sem_t sem_filled;
+        sem_init(&sem_filled, 1, chunkSize);
+        // sem_empty begins in 0 because everuthing is empty
+        sem_t sem_empty;
+        sem_init(&sem_empty, 1, 0);
+        int next_input = 0;
+        int next_output = 0;
 
-    queue_info->sem_filled = sem_filled;
-    queue_info->sem_empty = sem_empty;
-    queue_info->next_input = 0;
-    queue_info->next_output = 0;
+        queue_info->sem_filled = sem_filled;
+        queue_info->sem_empty = sem_empty;
+        queue_info->next_input = 0;
+        queue_info->next_output = 0;
+        queue_info->chunk_size = chunkSize;
 
+        int total_enco = 0;
+
+    }
+
+    QueueData *queue = mmap(NULL, queue_info->chunk_size * sizeof(QueueData), PROT_READ | PROT_WRITE,
+                            MAP_SHARED, fd_queue, 0);
+    
     stats->encoders_counter += 1;
 
-    write_info(queue, queue_info, stats, imageName, chunkSize, mode, key);
+    write_info(queue, queue_info, stats, imageName, chunkSize, mode, key, stats->total_enco);
 
     stats->encoders_counter -= 1;
     unsigned long currRealMem, peakRealMem, currVirtMem, peakVirtMem;
