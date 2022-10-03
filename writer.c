@@ -169,6 +169,10 @@ int getMemory(unsigned long *currRealMem, unsigned long *peakRealMem, unsigned l
 
 int main(int argc, char *argv[])
 {
+    // determine if the file descriptor already exists
+    //   if it does, then the shared memory has been created
+    int file_exists = access("/tmp/project_1_queue", F_OK) == 0 ? 1 : 0;
+
     // opens the file descriptor that has to be mapped to the
     //     shared memory
     int fd_queue = open("/tmp/project_1_queue", O_RDWR | O_CREAT, 0644);
@@ -214,20 +218,24 @@ int main(int argc, char *argv[])
     Stats *stats = mmap(NULL, sizeof(Stats), PROT_READ | PROT_WRITE,
                         MAP_SHARED, fd_stats, 0);
 
-    // sem_filled begins in chunk because everuthing is empty
-    sem_t sem_filled;
-    sem_init(&sem_filled, 1, chunk);
-    // sem_empty begins in 0 because everuthing is empty
-    sem_t sem_empty;
-    sem_init(&sem_empty, 1, 0);
-    int next_input = 0;
-    int next_output = 0;
+    if (!file_exists)
+    {
+        // sem_filled begins in chunk because everuthing is empty
+        sem_t sem_filled;
+        sem_init(&sem_filled, 1, chunk);
+        // sem_empty begins in 0 because everuthing is empty
+        sem_t sem_empty;
+        sem_init(&sem_empty, 1, 0);
+        int next_input = 0;
+        int next_output = 0;
 
-    queue_info->sem_filled = sem_filled;
-    queue_info->sem_empty = sem_empty;
-    queue_info->next_input = 0;
-    queue_info->next_output = 0;
+        queue_info->sem_filled = sem_filled;
+        queue_info->sem_empty = sem_empty;
+        queue_info->next_input = 0;
+        queue_info->next_output = 0;
 
+    }
+    
     stats->encoders_counter += 1;
 
     if (strcmp(argv[1], "auto") == 0 || strcmp(argv[1], "manual") == 0)

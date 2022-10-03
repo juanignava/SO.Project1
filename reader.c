@@ -117,7 +117,15 @@ void read_info_auto(QueueData *queue, QueueInfo *queue_info, Stats *stats, char 
         
 
         // wait for an enter hit when mode is manual
-        if (strcmp(mode, "manual") == 0) getchar();
+        if (strcmp(mode, "manual") == 0)
+        {
+            char received_char = getchar();
+            if (received_char == 'q')
+            {
+                mode = "auto";
+            }
+            
+        }
         
     }
 
