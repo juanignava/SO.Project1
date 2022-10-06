@@ -17,7 +17,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image/stb_image_write.h"
 
-#define NUM_ITEMS 180
 #define MAX_IMAGES 50
 
 // GLOBALS
